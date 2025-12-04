@@ -17,12 +17,12 @@ pipeline {
         stage('Run Node Exporter') {
             steps {
                 sh '''
-                # Stop & Remove existing Node Exporter
-                docker ps -q --filter "name=node-exporter" | grep -q . && docker stop node-exporter && docker rm node-exporter || true
+                echo "==> Removing old node-exporter if exists"
+                docker rm -f node-exporter || true
 
-                # Start Node Exporter
+                echo "==> Starting Node Exporter"
                 docker run -d \
-                  --name=node-exporter \
+                  --name node-exporter \
                   -p 9100:9100 \
                   prom/node-exporter
                 '''
@@ -32,15 +32,16 @@ pipeline {
         stage('Run Prometheus') {
             steps {
                 sh '''
+                echo "==> Preparing Prometheus directory"
                 mkdir -p $PROMETHEUS_CONFIG_DIR
                 cp prometheus.yml $PROMETHEUS_CONFIG_DIR/prometheus.yml
 
-                # Stop & Remove old Prometheus
-                docker ps -q --filter "name=prometheus" | grep -q . && docker stop prometheus && docker rm prometheus || true
+                echo "==> Removing old Prometheus container"
+                docker rm -f prometheus || true
 
-                # Run Prometheus
+                echo "==> Starting Prometheus"
                 docker run -d \
-                  --name=prometheus \
+                  --name prometheus \
                   -p 9090:9090 \
                   -v $PROMETHEUS_CONFIG_DIR/prometheus.yml:/etc/prometheus/prometheus.yml \
                   prom/prometheus
@@ -51,20 +52,31 @@ pipeline {
         stage('Run Grafana') {
             steps {
                 sh '''
-                # Stop & Remove old Grafana
-                docker ps -q --filter "name=grafana" | grep -q . && docker stop grafana && docker rm grafana || true
+                echo "==> Removing old Grafana container"
+                docker rm -f grafana || true
 
-                # Run Grafana
+                echo "==> Starting Grafana"
                 docker run -d \
-                  --name=grafana \
+                  --name grafana \
                   -p 3000:3000 \
                   grafana/grafana
                 '''
             }
         }
     }
-
     post {
         success {
             echo "✅ Monitoring stack deployed successfully!"
-            echo
+            echo "Grafana → http://<EC2_PUBLIC_IP>:3000"
+            echo "Prometheus → http://<EC2_PUBLIC_IP>:9090"
+            echo "Node Exporter → http://<EC2_PUBLIC_IP>:9100/metrics"
+        }
+        failure {
+            echo "❌ Deployment failed. Check Jenkins logs."
+        }
+    }
+}
+
+
+
+   
