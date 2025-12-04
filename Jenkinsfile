@@ -6,6 +6,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Repo') {
             steps {
                 git branch: 'main',
@@ -16,8 +17,10 @@ pipeline {
         stage('Run Node Exporter') {
             steps {
                 sh '''
-                docker ps -q --filter "name=nodeexporter" | grep -q . && docker stop node-exporter && docker rm node-exporter || true
-           
+                # Stop & Remove existing Node Exporter
+                docker ps -q --filter "name=node-exporter" | grep -q . && docker stop node-exporter && docker rm node-exporter || true
+
+                # Start Node Exporter
                 docker run -d \
                   --name=node-exporter \
                   -p 9100:9100 \
@@ -32,8 +35,10 @@ pipeline {
                 mkdir -p $PROMETHEUS_CONFIG_DIR
                 cp prometheus.yml $PROMETHEUS_CONFIG_DIR/prometheus.yml
 
+                # Stop & Remove old Prometheus
                 docker ps -q --filter "name=prometheus" | grep -q . && docker stop prometheus && docker rm prometheus || true
 
+                # Run Prometheus
                 docker run -d \
                   --name=prometheus \
                   -p 9090:9090 \
@@ -46,10 +51,12 @@ pipeline {
         stage('Run Grafana') {
             steps {
                 sh '''
+                # Stop & Remove old Grafana
                 docker ps -q --filter "name=grafana" | grep -q . && docker stop grafana && docker rm grafana || true
 
+                # Run Grafana
                 docker run -d \
-                  --name=c1 \
+                  --name=grafana \
                   -p 3000:3000 \
                   grafana/grafana
                 '''
@@ -60,12 +67,4 @@ pipeline {
     post {
         success {
             echo "✅ Monitoring stack deployed successfully!"
-            echo "Grafana → http://<EC2_PUBLIC_IP>:3000"
-            echo "Prometheus → http://<EC2_PUBLIC_IP>:9090"
-            echo "Node Exporter → http://<EC2_PUBLIC_IP>:9100/metrics"
-        }
-        failure {
-            echo "❌ Deployment failed. Check Jenkins logs."
-        }
-    }
-}
+            echo
