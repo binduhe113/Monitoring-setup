@@ -49,7 +49,7 @@ pipeline {
                 docker ps -q --filter "name=grafana" | grep -q . && docker stop grafana && docker rm grafana || true
 
                 docker run -d \
-                  --name=grafana \
+                  --name=c1 \
                   -p 3000:3000 \
                   grafana/grafana
                 '''
